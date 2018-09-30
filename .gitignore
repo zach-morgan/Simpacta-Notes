@@ -1,0 +1,7 @@
+node_modules/
+LICENSE
+amplify
+ios
+android
+.amplifyrc
+aws-exports.js
