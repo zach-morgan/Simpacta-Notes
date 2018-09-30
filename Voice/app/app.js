@@ -33,7 +33,7 @@ app.setHandler({
                 this.googleAction().showAccountLinkingCard();
             }
             //this.tell('Please link your account to use the srm app.');
-        } else { 
+        } else {
             let response = "Say your note now.";
             this.ask(response, response);
         }
@@ -103,7 +103,18 @@ app.setHandler({
                     this.tell("I had some trouble communicating with the login servers. Please check your connection, and try again later.");
                 })
             }
-    }
+    },
+
+    'ON_SIGN_IN': function() {
+        if (this.googleAction().getSignInStatus() === 'CANCELLED') {
+            this.tell("SRM requires a linked account to use, please try again, and log in.");
+        } else if (this.googleAction().getSignInStatus() === 'OK') {
+            let response = "Say your note now.";
+            this.ask(response, response);
+        } else if (this.googleAction().getSignInStatus() === 'ERROR') {
+            this.tell("There was an error processing your login, please try again later.");
+        }
+    },
 });
 
 module.exports.app = app;
