@@ -72,7 +72,7 @@ app.setHandler({
                         .then(userData => {
                             console.log(userData);
                             let userDoc = JSON.parse(userData.Body.toString());
-                            let noteID = "private/" + userDoc.id + "/" + (Math.floor(Date.now() / 1000)).toString() + ".json";
+                            let noteID = "private/" + userDoc.id + "/notes/" + (Math.floor(Date.now() / 1000)).toString() + ".json";
                             let noteText = note.value;
                             let noteJSON = {text: noteText, priority: null, associatedImage: null};
                             // var blob = new Blob([JSON.stringify(noteJSON, null, 2)], {type : 'application/json'});

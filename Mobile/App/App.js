@@ -71,5 +71,6 @@ const App = class App extends Component {
 }
 
 Amplify.configure(AWSCONFIG);
+Amplify.Logger.LOG_LEVEL = 'VERBOSE';
 
 export default App;

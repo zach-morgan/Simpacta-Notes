@@ -1,33 +1,28 @@
 import React, { Component } from 'react';
-import { View, Image } from 'react-native';
-import { Button, Text } from 'native-base';
+import { View, ActivityIndicator } from 'react-native';
 import { Actions } from 'react-native-router-flux';
 import Amplify, {API, Auth, Storage} from 'aws-amplify';
-import { Cache } from 'aws-amplify';
-
-const iconWidth = (width * 52) / 100;
-const iconImage = require('../assets/srmlogo.png');
+import NotesContainer from './Notes/NotesContainer.js';
 
 export default class NotesScreen extends Component {
+  state = {
+    notes: [],
+    loading: true
+  };
 
-  constructor() {
-    super();
-    this.state = {
-      notes: [],
-      isLogin: false,
-      canLogin: false
-    };
+  componentDidMount() {
+      this.documentUser();
+      this.downloadNotes();
   }
 
   documentUser = async() => {
-    console.log("hits document")
     Auth.currentAuthenticatedUser()
       .then(user => {
         let sub = user.attributes.sub;
         Storage.get(sub + ".txt", {download: true})
-          .then(userIsEntered =>{
-            console.log("user already entered!")
-            console.log(userIsEntered);
+          .then(userIsEntered => {
+            console.log(userIsEntered.toString() + "user already entered!")
+            console.log(userIsEntered.Body.toString());
           })
           .catch(userIsNotEntered => {
             console.log(userIsNotEntered);
@@ -60,108 +55,58 @@ export default class NotesScreen extends Component {
   };
 
   downloadNotes = async () => {
-    Storage.list("notes/", {level: "private"})
-      .then( keys => {
-        let notePromises = [];
-        keys.forEach( noteKey => {
-          let key = noteKey.key;
-          if (key !== "notes/"){
-            notePromises.push(Storage.get(key, {level:'private', download: true}));
-          }
-        })
-        Promise.all(notePromises)
-          .then( data => {
-            data.forEach( note => {
-              let noteJSON = JSON.parse(note.Body.toString());
-              console.log(noteJSON);
+    Auth.currentCredentials()
+      .then(user => {
+        Storage.list("notes/", {level : 'private'})
+          .then( keys => {
+            let notePromises = [];
+            let noteKeys = keys.filter(function(key){
+                return key.key !== 'notes/';
             })
-          })
-          .catch( err => {
-            console.log("error getting notes");
-            console.log(err);
-          })
-      })
-      .catch(err => {
-        console.log("error getting notes keys");
-        console.log(err);
-      })
-  }
-
-  downloadImages = () => {
-    Storage.list("images/", {level: "private"})
-      .then(keys => {
-        let imagePromises = [];
-        keys.forEach( imageKey => {
-          let key = imageKey.key;
-          if (key !== "images/"){
-            imagePromises.push(Storage.get(key, {level:'private', download: true}));
-          }
-        })
-        Promise.all(imagePromises)
-          .then(images => {
-            console.log(images);
+            noteKeys.forEach( noteKey => {
+              console.log(noteKey.key);
+              let key = noteKey.key;
+              notePromises.push(Storage.get(key, {level: 'private', download: true}));
+            })
+            Promise.all(notePromises)
+              .then( data => {
+                console.log("notes " + data);
+                let JSONdata = [];
+                data.forEach( note => {
+                  console.log(note);
+                  let noteJSON = JSON.parse(note.Body.toString());
+                  noteJSON.s3Key = keys[data.indexOf(note)].key;
+                  JSONdata.push(noteJSON);
+                })
+                this.setState({loading: false, notes: JSONdata});
+              })
+              .catch( err => {
+                console.log("error getting notes");
+                console.log(err);
+              })
           })
           .catch(err => {
-            console.log("error getting images");
+            console.log("error getting notes keys");
             console.log(err);
           })
       })
-      .catch(err => {
-        console.log("error getting image keys");
-        console.log(err);
-      })
+      .catch(err => console.log(err));
+
+
   }
 
-
-    // Storage.list("/", {level: "private"})
-    //   .then(result => {
-    //     console.log(result);
-    //   })
-    //   .catch(error => {
-    //     console.log(error);
-    //   })
-
-  uploadNote = async () => {
-    Auth.currentCredentials().then(user => console.log(user));
-    Auth.currentAuthenticatedUser().then(user => console.log(user));
-    var debug = {noteText: 'test', priority: 4, image: "imageurl"};
-    var blob = new Blob([JSON.stringify(debug, null, 2)], {type : 'application/json'});
-    Storage.put('test321.json', blob, {level:'private'})
-    .then (result => console.log(result))
-    .catch(err => console.log(err));
+  displayRightThing = () => {
+    if (this.state.loading) {
+      return <ActivityIndicator size="large" color="#0000ff" />
+    } else {
+      return <NotesContainer notes={this.state.notes} />
+    }
   }
 
   render() {
-    this.documentUser();
-    this.downloadImages();
-    this.downloadNotes();
     return (
-      <View style={{
-        backgroundColor: appMainColor, flex: 1, alignItems: 'center', justifyContent: 'center',
-      }}
-      >
-        <Image
-          source={iconImage}
-          resizeMode="cover"
-          style={{
-            width: iconWidth,
-            tintColor: mainThemeColor,
-            marginTop: -height / 30,
-            height: iconWidth * 0.86,
-          }}
-        />
-        <Button
-          onPress={this.downloadNotes}
-          style={{
-            backgroundColor: mainThemeColor, alignSelf: 'center', marginTop: height / 50, height: height / 14,
-          }}
-        >
-          <Text
-            uppercase={false}
-            style={{ color: appMainColor, fontWeight: '600', fontSize: GLOBAL.totalSize(2.35) }}
-          >{language.logOut}
-          </Text>
-        </Button>
+      <View style={{alignItems:'center'}}>
+        {this.displayRightThing()}
       </View>
     );
   }
