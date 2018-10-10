@@ -147,7 +147,7 @@ export default class RegisterTab extends Component {
             ref={(ref) => { this.state.inputs[2] = ref; }}
           />
         </Form>
-        <View style={{ marginTop: height / 25, alignItems: 'center' }}>
+        <View style={{ marginTop: height / 15, alignItems: 'center' }}>
           <View animation={animationType} iterationCount="infinite" duration={500}>
             <Button
               bordered

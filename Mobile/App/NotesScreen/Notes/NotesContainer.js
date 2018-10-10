@@ -6,7 +6,7 @@ import {Storage} from 'aws-amplify';
 import NoteEntry from './NoteEntry.js';
 import Modal from 'react-native-modal';
 import Voice from 'react-native-voice';
-
+import Fuse from 'fuse.js';
 
 const srmLogo = require('../../assets/srmlogo.png');
 const routineLogo = require('../../assets/routine.png');
@@ -18,21 +18,37 @@ export default class NotesContainer extends Component {
 
     constructor(props){
         super(props);
-        Voice.onSpeechResults = this.onSpeechResultsHandler.bind(this);
+        this.state = props;
+        Voice.onSpeechResults = this.onSpeechResults.bind(this);
     }
 
     state = {
         notes: [],
+        searchPhrase: "",
         modalVisible: false,
     }
 
 
-    onSpeechResultsHandler = (result) => {
-        console.log(result);
+    onSpeechResults(results) {
+        console.log("speech results");
+        console.log(results);
+        this.setState({searchPhrase: results.value[0]});
     }
 
-    startVoice = () => {
-        Voice.start('en-US');
+    startVoice = async () => {
+        try {
+            await Voice.start('en-US');
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    endVoice = async () => {
+        try {
+            await Voice.stop();
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     setModalVisible = () => {
@@ -78,51 +94,90 @@ export default class NotesContainer extends Component {
         )
     }
 
-    updateNote = (oldKey, newNote) => {
-        let newNotesArray = this.state.notes.filter(function( key ) {
-            return oldKey !== key;
+    updateNote = (noteJSON) => {
+        console.log('updating container');
+        let newNotesArray = this.state.notes.filter(function( note ) {
+            return noteJSON.s3Key !== note.s3Key;
         });
-        newNotesArray.insert(0, newNote);
+        newNotesArray.splice(0, 0, noteJSON);
         this.setState({notes: newNotesArray});
-    }
 
-    createNote = (newNote) => {
-        let newNotesArray = this.state.notes.slice(0);
-        let composeKey = "notes/" + newNote.dateCreated.toString() + ".txt";
-        newNotesArray.push(newNote);
-        Storage.put(composeKey, JSON.stringify(newNote), {level: 'private'})
+        Storage.put(noteJSON.s3Key, JSON.stringify(noteJSON), {level: 'private'})
             .then(result => console.log('succesfull updated note in s3'))
             .catch(err => {
                 console.log( err + " error updating note");
             });
-        newNote.s3Key = composeKey;
+    }
+
+    createNote = (noteJSON) => {
+        Storage.put(noteJSON.s3Key, JSON.stringify(noteJSON), {level: 'private'})
+            .then(result => console.log('succesfull updated note in s3'))
+            .catch(err => {
+                console.log( err + " error updating note");
+            });
+
+        let newNotesArray = this.state.notes.slice(0);
+        newNotesArray.push(noteJSON);
         this.setState({notes: newNotesArray, modalVisible: false});
     }
 
-    // sortForSearch = () => {
+    dateSorter = (n1, n2) => {
+        if (n1.dateCreated > n2.dateCreated)
+            return -1;
+        if (n1.dateCreated < n2.dateCreated)
+            return 1;
+        return 0;
+    }
 
-    // }
+    renderNotes = () => {
 
-    // clearSearch = () => {
+        let pinnedNotes = [];
+        let nonPinnedNotes = [];
+        this.state.notes.forEach(note => {
+            note.isPinned ?
+                pinnedNotes.push(note) : nonPinnedNotes.push(note)
+        });
+        pinnedNotes.sort(this.dateSorter);
+        nonPinnedNotes.sort(this.dateSorter);
+        var notesToDisplay = pinnedNotes.concat(nonPinnedNotes);
+        if (this.state.searchPhrase){
+            var options = {
+                keys: ['text'],
+                id: 's3Key',
+                threshold: 0.3,
+                sort: true
+            }
+            var fuse = new Fuse(notesToDisplay, options);
+            let searchResults = fuse.search(this.state.searchPhrase);
+            notesToDisplay = notesToDisplay.filter(note => {
+                return searchResults.includes(note.s3Key);
+            })
+        }
 
-    // }
+
+        return notesToDisplay.map(note =>
+            <Note
+                 s3Key={note.s3Key}
+                 key={note.s3Key}
+                 isPinned={note.isPinned}
+                 dateCreated= {note.dateCreated}
+                 text={note.text}
+                 image={note.image}
+                 priority={note.priority}
+                 modalVisible={false}
+                 onRef={ref => (this.parentReference = ref)}
+                 delete={this.removeNote.bind(this)}
+                 update={this.updateNote.bind(this)}
+             />
+         );
+    }
 
     render() {
-        let notes = this.state.notes.map(note =>
-           <Note
-                s3Key={note.s3Key}
-                key={note.s3Key}
-                dateCreated= {note.dateCreated}
-                text={note.text}
-                image={note.image}
-                priority={note.priority}
-                modalVisible={false}
-                onRef={ref => (this.parentReference = ref)}
-                delete={this.removeNote.bind(this)}
-                update={this.updateNote.bind(this)}
-            />
-        );
-        console.log("note length: " + notes.length);
+        let notes = this.renderNotes();
+        console.log(notes);
+        for (note in notes){
+            console.log(note);
+        }
         return (
             <SafeAreaView style={{flex: 1}}>
                 <View style={{flex: 1}}>
@@ -153,9 +208,19 @@ export default class NotesContainer extends Component {
                             <View style={{flex:1, alignItems: 'center'}}>
                                 <Image resizeMode='contain' source={searchIcon} style={{flex: 0.5}}/>
                             </View>
-                            <TextInput style={{flex: 4}} placeholder="search"/>
+                            <TextInput style={{
+                                flex: 4,
+                                fontSize: GLOBAL.height / 35,
+                                fontFamily: 'System'
+                            }}
+                                returnKeyType="search"
+                                onChangeText={text => {this.setState({searchPhrase: text})}}
+                                value={this.state.searchPhrase}
+                                placeholder="Search"/>
 
-                            <TouchableOpacity style={{flex:1, alignItems: 'center'}} onPress={this.startVoice}>
+                            <TouchableOpacity style={{flex:1, alignItems: 'center'}}
+                                onPressIn={this.startVoice}
+                                onPressOut={this.endVoice}>
                                 <Image resizeMode='contain' source={micIcon} style={{flex: 0.5}}/>
                             </TouchableOpacity>
 
@@ -164,7 +229,7 @@ export default class NotesContainer extends Component {
                     </View>
 
                     <ScrollView
-                        style={{height: 4 * (GLOBAL.height / 5), width: GLOBAL.width, position:"absolute", top: (GLOBAL.height/5)}}
+                        style={{marginTop: 5, height: 4 * (GLOBAL.height / 5), width: GLOBAL.width, position:"absolute", top: (GLOBAL.height/5)}}
                         contentContainerStyle={{
                             flexGrow: 1,
                             justifyContent: 'flex-start'}}>
@@ -175,14 +240,11 @@ export default class NotesContainer extends Component {
 
                     <Modal
                             animationType="slide"
-                            avoidKeyboard={true}
                             isVisible={this.state.modalVisible}
                             backdropOpacity={0.5}
                         >
                             <NoteEntry
-                                image={this.state.image}
-                                text={this.state.text}
-                                priority={this.state.priority}
+                                isPinned={false}
                                 onRef={ref => (this.parentReference = ref)}
                                 saveNewData = {this.createNote.bind(this)}
                                 cancelEdit = {this.setModalInvisible.bind(this)}

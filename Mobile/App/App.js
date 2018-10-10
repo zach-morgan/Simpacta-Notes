@@ -6,9 +6,8 @@ import SplashScreen from 'react-native-splash-screen';
 import AppGlobalConfig from './Config/Main';
 import LoginScreen from './LoginScreen/Main';
 import NotesScreen from './NotesScreen/Main';
-import Amplify, { Auth, withAuthenticator } from 'aws-amplify'
+import Amplify, { Auth } from 'aws-amplify'
 import AWSCONFIG from '../aws-exports.js';
-
 let context;
 
 GLOBAL.showToast = (message) => {
@@ -65,6 +64,7 @@ const App = class App extends Component {
             textStyle={{ fontSize: GLOBAL.totalSize(2.34), color: mainThemeColor, fontWeight: '400' }}
             ref={(ref) => { context.toast = ref; }}
           />
+
         </View>
       );
   }

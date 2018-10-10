@@ -1,8 +1,15 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { View, TextInput , TouchableHighlight, Text, Button, Image} from 'react-native';
+import { View, TextInput , TouchableOpacity, Text, Button, Image} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
 const attachIcon = require("../../assets/image-attach.png");
+
+const darkBlue = "#2F80ED";
+const lightBlue = "#249BDF";
+const w = GLOBAL.width;
+const h = GLOBAL.height;
+
 
 export default class NoteEntry extends Component {
 
@@ -16,38 +23,40 @@ export default class NoteEntry extends Component {
         dateCreated: null,
         image: null,
         text: null,
-        priority: null
+        priority: null,
+        isPinned: false
     }
 
     renderPriorityButtons = () => {
         let buttons = [];
         for (var i = 1; i <= 5; i++){
             let index = i;
-            let newBtn = <TouchableHighlight
-                key={index}
-                onPress={() => this.setState({priority: index})}
-                style={{
-                    width: GLOBAL.width / 8,
-                    height: GLOBAL.width / 8,
-                    borderRadius: (GLOBAL.width / 8) /2,
-                    borderColor: 'black',
-                    borderWidth: 1,
-                    justifyContent:'center',
-                    backgroundColor:
-                        this.state.priority === index ?
-                            "#007aff" : "#ffffff"
-                }}
-            >
-                <Text
-                    style={{
-                        fontSize: GLOBAL.height / 22,
-                        textAlign: 'center',
-                        color:
-                            this.state.priority !== index ?
-                                "#007aff" : "#ffffff",
-                    }}
-                >{i.toString()}</Text>
-            </TouchableHighlight>;
+            let newBtn =
+            <LinearGradient
+                    key={index}
+                    start={{x: 0, y: 0}}
+                    end={{x: 1, y: 0}}
+                    colors={ this.state.priority === index ? [darkBlue, lightBlue] : ["#FFFFFF", "#FFFFFF"]}
+                    style={{width: GLOBAL.width / 8,
+                        height: GLOBAL.width / 8,
+                        borderRadius: (GLOBAL.width / 8) / 2,
+                        borderColor: this.state.priority === index ? 'white' : 'black',
+                        borderWidth: 1,
+                        justifyContent:'center',}}>
+                <TouchableOpacity
+                    onPress={() => this.setState({priority: index})}
+                >
+                        <Text
+                            style={{
+                                fontSize: GLOBAL.height / 25,
+                                textAlign: 'center',
+                                color:
+                                    this.state.priority !== index ?
+                                        "#007aff" : "#ffffff",
+                            }}
+                        >{i.toString()}</Text>
+                </TouchableOpacity>
+            </LinearGradient>
             buttons.push(newBtn);
         }
         return buttons;
@@ -82,66 +91,97 @@ export default class NoteEntry extends Component {
 
             console.log(source);
             this.setState({
-                image: source
+                image: response.uri
             });
         }
         });
     }
 
     render() {
+        let img;
+        if (this.state.image) {
+            img =
+            <TouchableOpacity style={{
+                flex: 1.25,
+                justifyContent: 'center',
+                }}
+                onPress={this.imagePicker}
+            >
+                <Image
+                    source={{uri: this.state.image}}
+                    style={{
+                        resizeMode:'contain',
+                        flex: 1,
+                        height:undefined,
+                        width:undefined }}
+                />
+            </TouchableOpacity>
+        } else {
+            img =
+            <TouchableOpacity style={{
+                flex: 0.3,
+                borderColor: 'black',
+                borderWidth: 1,
+                justifyContent: 'center',
+                borderStyle: 'dashed',
+                backgroundColor: "rgba(28, 121, 229, 0.3)",
+                borderColor: "rgba(28, 121, 229, 0.7)"
+                }}
+                onPress={this.imagePicker}
+            >
+                <Image
+                    source={attachIcon}
+                    style={{
+                        resizeMode:'contain',
+                        flex: 0.5,
+                        height:undefined,
+                        width:undefined }}
+                />
+            </TouchableOpacity>
+        }
         return(
                 <View style={{
-                    flex: 1,
+                    flex: 0.75,
                     backgroundColor: 'white',
-                    borderRadius: GLOBAL.width / 10,
+                    borderRadius: GLOBAL.height / 25,
                     borderColor: "black",
-                    borderWidth: 2
+                    borderWidth: 1
                 }}>
-                    <View style={{flex:1, flexDirection: "row", justifyContent:"space-between", marginRight:20, marginLeft:15, marginTop: 20}}>
+                    <View style={{flex:0.3, flexDirection: "row", justifyContent:"space-between", marginRight:20, marginLeft:15, marginTop: 20}}>
                         <Button title="Cancel"
                             onPress={() => this.props.cancelEdit()}/>
                         <Button title="Save"
                             onPress={() => {
                                 console.log(this.state);
-                                this.state.dateCreated = Math.floor(Date.now() / 10000)
-                                this.props.saveNewData(this.state)}
+                                let newJSON = {
+                                    s3Key: this.props.s3Key || "notes/" + Math.floor(Date.now() / 1000).toString() + ".txt",
+                                    dateCreated: Math.floor(Date.now() / 1000),
+                                    text: this.state.text,
+                                    image: this.state.image,
+                                    priority: this.state.priority,
+                                    isPinned: this.state.isPinned}
+                                this.props.saveNewData(newJSON)}
                             }
                         />
                     </View>
                     <View
-                         style={{flex:3, alignContent:'flex-start', marginLeft: 10, marginRight:10}}
+                         style={{flex: 2, alignContent:'flex-start', marginLeft: 20, marginRight:20}}
                     >
                         <TextInput
                             multiline={true}
-                            style={{fontSize: GLOBAL.height / 25}}
+                            style={{fontSize: GLOBAL.height / 35, marginBottom: 10}}
                             placeholder="Enter your note"
                             value={this.state.text}
+                            returnKeyType="done"
                             onChangeText={(text) => this.setState({text: text})}
                         />
                     </View>
 
-                    <TouchableHighlight style={{
-                        flex: this.state.image ? 1.5 : 0.5,
-                        borderColor: 'black',
-                        borderWidth: 1,
-                        borderStyle: 'dashed',
+                    {img}
 
-                        }}
-                        onPress={this.imagePicker}
-                    >
-                        <Image
-                            source={this.state.image || attachIcon}
-                            style={{
-                                resizeMode:'contain',
-                                flex: 1,
-                                height:undefined,
-                                width:undefined }}
-                        />
-                    </TouchableHighlight>
-
-                    <View style={{flex: 1, marginLeft: 20, marginRight:20, marginBottom: 40, justifyContent:'flex-start'}}>
-                        <Text style={{textAlign:'left', fontSize: GLOBAL.height / 25}}>Priority</Text>
-                        <View style={{flexDirection: "row", justifyContent:"space-between"}}>
+                    <View style={{flex: 1, marginLeft: 20, marginRight: 20, justifyContent:'space-around'}}>
+                        <Text style={{ textAlign:'left', fontSize: GLOBAL.height / 30, marginTop: 10}}>Priority</Text>
+                        <View style={{flexDirection: "row", justifyContent:"space-between", marginBottom: 20}}>
                             {this.renderPriorityButtons()}
                         </View>
                     </View>
@@ -151,12 +191,13 @@ export default class NoteEntry extends Component {
 }
 
 NoteEntry.propTypes = {
+    isPinned: PropTypes.bool,
     image: PropTypes.string,
     text: PropTypes.string,
     priority: PropTypes.number,
     s3Key: PropTypes.string,
     dateCreated: PropTypes.number,
-    saveNewData: PropTypes.func,
-    cancelEdit: PropTypes.func
+    saveNewData: PropTypes.func.isRequired,
+    cancelEdit: PropTypes.func.isRequired
 }
 

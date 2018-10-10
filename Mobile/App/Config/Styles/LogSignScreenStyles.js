@@ -30,7 +30,7 @@ class LogSignScreenStyles {
           width, height: companyBannerHeight, alignItems: 'center', justifyContent: 'center',
         },
         icon: {
-          position: 'absolute', width: companyIconWidth, tintColor: mainThemeColor,
+          position: 'absolute', flex:1,  tintColor: mainThemeColor,
         },
       });
 

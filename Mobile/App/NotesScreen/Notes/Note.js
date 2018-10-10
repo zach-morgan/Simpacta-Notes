@@ -8,9 +8,16 @@ import LinearGradient from 'react-native-linear-gradient';
 
 const editIcon = require("../../assets/edit-icon.png");
 const pinIcon = require("../../assets/pin-icon.png");
+const bluePin = require("../../assets/blue-pin-icon.png");
 const deleteIcon = require("../../assets/trash-icon.png");
 
-const iconSize = GLOBAL.height / 15;
+const darkBlue = "#2F80ED";
+const lightBlue = "#249BDF";
+
+const iconSize = GLOBAL.height / 20;
+
+const w = GLOBAL.width;
+const h = GLOBAL.height;
 
 export default class Note extends Component {
 
@@ -24,6 +31,7 @@ export default class Note extends Component {
         image: null,
         text: null,
         priority: null,
+        isPinned: false,
         modalVisible: false,
         position: 10
     }
@@ -36,22 +44,29 @@ export default class Note extends Component {
         this.setState({modalVisible: false});
     }
 
+    togglePin = () => {
+        console.log(this.state.isPinned);
+        let newJSON = {
+            s3Key: this.props.s3Key,
+            dateCreated: this.state.dateCreated,
+            text: this.state.text,
+            image: this.state.image,
+            priority: this.state.priority,
+            isPinned: !this.state.isPinned}
+        this.props.update(newJSON);
+        this.setState({isPinned: !this.state.isPinned, position: 0});
+    }
+
 
     componentDidMount() {
         this.setState(this.props);
     }
 
-    saveNoteChange = (newNote) => {
+    saveNoteChange = (noteJSON) => {
         this.setModalInvisible();
-        this.setState(newNote);
-        let noteJSON = {text: newNote.text, priority: newNote.priority, image: newNote.image, dateCreated: newNote.dateCreated}
-        let key = this.props.s3Key;
-
-        Storage.put(key, JSON.stringify(noteJSON), {level: 'private'})
-            .then(result => console.log('succesfull updated note in s3'))
-            .catch(err => {
-                console.log( err + " error updating note");
-            });
+        this.move();
+        this.setState(noteJSON);
+        this.props.update(noteJSON);
     }
 
     setPriority = (priority) => {
@@ -65,6 +80,33 @@ export default class Note extends Component {
     }
 
     render() {
+        let leftPin = undefined;
+        if (this.state.isPinned){
+            leftPin = <TouchableOpacity onPress={this.togglePin}
+                style={{
+                    flex: 0.1,
+                    backgroundColor: "rgba(47,128,237,0.1)",
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: 5,
+                    marginRight: -5,
+                    borderRadius: 10
+                }}>
+                <Image source={bluePin}
+                    style={{flex: 0.25,  resizeMode: "contain", opacity: 0.75}}/>
+            </TouchableOpacity>
+        }
+        var img;
+        if (this.state.image) {
+            img = <Image
+                source={{uri: this.state.image}}
+                style={{ resizeMode:'contain',
+                    flex: 1,
+                    margin:5,
+                    height:undefined,
+                    width:undefined}}
+            />
+        }
         return(
             <View>
                 <View style={{flexDirection: "row",
@@ -72,6 +114,9 @@ export default class Note extends Component {
                         marginTop: 15,
                         marginLeft: this.state.position,
                         marginRight: 10}}>
+
+                    {leftPin}
+
                     <TouchableOpacity
                         onPress={this.move}
                         style={{ flex: 1}}
@@ -84,29 +129,22 @@ export default class Note extends Component {
                                 marginTop:15,
                                 marginBottom:15,
                                 color: 'black',
-                                fontSize: 18,
+                                fontSize: h / 42,
                                 fontFamily: 'System',
                                 alignItems: 'center'}}>
                                 {this.state.text}
                             </Text>
 
+                            {img}
 
-                            <Image
-                                source={this.state.image}
-                                style={{ resizeMode:'contain',
-                                    flex: this.state.image ? 1 : 0,
-                                    margin:5,
-                                    height:undefined,
-                                    width:undefined}}
-                            />
                             <LinearGradient
                                 style={{
                                     flex:1,
                                     backgroundColor: '#007aff',
                                     justifyContent:'center',
-                                    borderRadius: 40,
+                                    borderRadius: h / 25,
                                     marginRight: -3}}
-                                start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={['#249BDF', '#2F80ED']}>
+                                start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={[darkBlue, lightBlue]}>
                                 <Text style={styles.priorityText}>
                                     {this.state.priority}
                                 </Text>
@@ -136,7 +174,7 @@ export default class Note extends Component {
                         </View>
 
                         <View style={styles.iconContainer}>
-                            <TouchableOpacity onPress={this.setModalInvisible}>
+                            <TouchableOpacity onPress={this.togglePin}>
                                 <View style={styles.pinIconContainer}>
                                     <Image source={pinIcon}
                                         style={styles.icon}/>
@@ -168,7 +206,6 @@ export default class Note extends Component {
                 </View>
                 <Modal
                     animationType="slide"
-                    avoidKeyboard={true}
                     isVisible={this.state.modalVisible}
                     backdropOpacity={0.5}
                     >
@@ -196,7 +233,8 @@ let styles = StyleSheet.create({
         textAlign: 'center',
         color: "#373737",
         fontFamily: 'System',
-        opacity: 0.7
+        opacity: 0.7,
+        fontSize: h / 45
     },
     icon: {
         flex: 0.5,
@@ -239,7 +277,7 @@ let styles = StyleSheet.create({
         marginLeft: 10,
         marginRight: 10,
         backgroundColor:"white",
-        borderRadius: 30,
+        borderRadius: h / 30,
         borderWidth: 1,
         borderColor: "#FFF",
         shadowColor: "#373737",
@@ -249,7 +287,7 @@ let styles = StyleSheet.create({
     },
     priorityText: {
         textAlign: 'center',
-        fontSize: 26,
+        fontSize: h / 30,
         fontFamily: 'System',
         color: 'white'
     }
@@ -258,6 +296,7 @@ let styles = StyleSheet.create({
 Note.propTypes = {
 
     s3Key: PropTypes.string,
+    isPinned: PropTypes.bool,
     dateCreated: PropTypes.number,
     image: PropTypes.string,
     text: PropTypes.string,

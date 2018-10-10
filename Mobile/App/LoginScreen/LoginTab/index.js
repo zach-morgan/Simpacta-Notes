@@ -18,7 +18,8 @@ export default class LoginTab extends Component {
     this.state = {
       inputs: [],
       isLogin: false,
-      canLogin: false
+      canLogin: false,
+      isForgot: false
     };
   }
 
@@ -64,10 +65,22 @@ export default class LoginTab extends Component {
                 this.setState({ isLogin: false, canLogin: false });
                 this.clearAllInputs();
               })
-              .catch( error => console.log(error));
+              .catch( error => {
+                  if (error.code === "UserNotFoundException" ){
+                      alert("Email not registered!");
+                  } else if (error.code === "NotAuthorizedException"){
+                      alert("Incorrect password!");
+                  }
+              });
         }
     }
   };
+
+  forgotPass = () => {
+    Auth.forgotPassword("zachmorgan987221@gmail.com")
+      .then(data => console.log(data))
+      .catch(err => console.log(err));
+    }
 
   clearAllInputs = () => {
     this.state.inputs.forEach((child) => {
@@ -75,11 +88,9 @@ export default class LoginTab extends Component {
     });
   };
 
-  forgotPassword = () => {
-    console.warn('Forgot password clicked'); // eslint-disable-line
-  };
 
   render() {
+    
     let animationType;
     let loginColor;
 
@@ -115,7 +126,7 @@ export default class LoginTab extends Component {
             ref={(ref) => { this.state.inputs[1] = ref; }}
           />
         </Form>
-        <TouchableOpacity onPress={this.forgotPassword} activeOpacity={0.5} style={{ marginTop: height / 25, alignItems: 'center' }}>
+        <TouchableOpacity onPress={() => console.log("forgot")} activeOpacity={0.5} style={{ marginTop: height / 10, alignItems: 'center' }}>
           <Text style={GLOBAL.loginScreenStyle.remember}>{language.dontRemember}</Text>
         </TouchableOpacity>
         <View style={{ marginTop: height / 15 }}>
@@ -132,14 +143,15 @@ export default class LoginTab extends Component {
               {indicator}
             </Button>
           </Animatable.View>
-          <View style={{ flexDirection: 'row', marginTop: height / 25 }}>
+          {/* <View style={{ flexDirection: 'row', marginTop: height / 25 }}>
             <FacebookButton special />
             <GoogleButton special />
-          </View>
+          </View> */}
         </View>
       </Animatable.View>
     );
   }
+
 }
 
 LoginTab.propTypes = {
