@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { ScrollView, View, Image, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, StyleSheet } from 'react-native';
+import { ScrollView, View, Image, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, StyleSheet, StatusBar, Platform} from 'react-native';
 import Note from './Note.js';
 import PropTypes from 'prop-types';
 import {Storage} from 'aws-amplify';
@@ -7,12 +7,24 @@ import NoteEntry from './NoteEntry.js';
 import Modal from 'react-native-modal';
 import Voice from 'react-native-voice';
 import Fuse from 'fuse.js';
+import nextFrame from 'next-frame';
+import { getStatusBarHeight } from 'react-native-iphone-x-helper'
 
 const srmLogo = require('../../assets/srmlogo.png');
 const routineLogo = require('../../assets/routine.png');
 const plus = require('../../assets/plus.png');
 const searchIcon = require('../../assets/search.png');
-const micIcon = require('../../assets/microphone.png')
+const micIcon = require('../../assets/microphone.png');
+const emptImg = require('../../assets/empty-note-container.png');
+
+const darkBlue = "#2F80ED";
+const lightBlue = "#249BDF";
+
+const MyStatusBar = ({backgroundColor, ...props}) => (
+    <View style={[styles.statusBar, { backgroundColor }]}>
+      <StatusBar translucent backgroundColor={backgroundColor} {...props} />
+    </View>
+  );
 
 export default class NotesContainer extends Component {
 
@@ -30,8 +42,8 @@ export default class NotesContainer extends Component {
 
 
     onSpeechResults(results) {
-        console.log("speech results");
-        console.log(results);
+        //console.log("speech results");
+        //console.log(results);
         this.setState({searchPhrase: results.value[0]});
     }
 
@@ -39,7 +51,7 @@ export default class NotesContainer extends Component {
         try {
             await Voice.start('en-US');
         } catch (e) {
-            console.error(e);
+            //console.error(e);
         }
     }
 
@@ -47,7 +59,7 @@ export default class NotesContainer extends Component {
         try {
             await Voice.stop();
         } catch (e) {
-            console.error(e);
+            //console.error(e);
         }
     }
 
@@ -63,29 +75,30 @@ export default class NotesContainer extends Component {
         this.setState({notes: this.props.notes});
     }
 
-    removeNote = (key) => {
+    removeNote = async (key) => {
         Alert.alert(
             'Deleting Note',
             'Are you sure you want to delete this note?',
             [
-                {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
-                {text: 'Yes', onPress: () => {
-                        console.log("deleted key: " + key);
+                {text: 'Cancel', onPress: () => {}, style: 'cancel'},
+                {text: 'Yes', onPress: async () => {
+                        //console.log("deleted key: " + key);
                         let newNotesArray = this.state.notes.filter(function( note ) {
                             return note.s3Key !== key;
                         });
                         this.setState({notes: newNotesArray});
+                        await nextFrame();
                         Storage.remove(key, {level: 'private'})
                             .then(result => {
-                                console.log('deleted in aws')
-                                console.log(result);
+                                //console.log('deleted in aws')
+                                //console.log(result);
                             })
                             .catch(err => {
                                 for (key in err){
-                                    console.log(key);
+                                    //console.log(key);
                                 }
-                                console.log(key.Body);
-                                console.log( " error deleting in aws")
+                                //console.log(key.Body);
+                                //console.log( " error deleting in aws")
                             });
                     }
                 },
@@ -94,31 +107,31 @@ export default class NotesContainer extends Component {
         )
     }
 
-    updateNote = (noteJSON) => {
-        console.log('updating container');
+    updateNote = async (noteJSON) => {
+        //console.log('updating container');
         let newNotesArray = this.state.notes.filter(function( note ) {
             return noteJSON.s3Key !== note.s3Key;
         });
         newNotesArray.splice(0, 0, noteJSON);
         this.setState({notes: newNotesArray});
-
+        await nextFrame();
         Storage.put(noteJSON.s3Key, JSON.stringify(noteJSON), {level: 'private'})
-            .then(result => console.log('succesfull updated note in s3'))
+            .then(result => {}) //console.log('succesfull updated note in s3'))
             .catch(err => {
-                console.log( err + " error updating note");
+                //console.log( err + " error updating note");
             });
     }
 
-    createNote = (noteJSON) => {
-        Storage.put(noteJSON.s3Key, JSON.stringify(noteJSON), {level: 'private'})
-            .then(result => console.log('succesfull updated note in s3'))
-            .catch(err => {
-                console.log( err + " error updating note");
-            });
-
+    createNote = async (noteJSON) => {
         let newNotesArray = this.state.notes.slice(0);
         newNotesArray.push(noteJSON);
         this.setState({notes: newNotesArray, modalVisible: false});
+        await nextFrame();
+        Storage.put(noteJSON.s3Key, JSON.stringify(noteJSON), {level: 'private'})
+            .then(result => {})//console.log('succesfull updated note in s3'))
+            .catch(err => {
+                //console.log( err + " error updating note");
+            });
     }
 
     dateSorter = (n1, n2) => {
@@ -173,103 +186,146 @@ export default class NotesContainer extends Component {
     }
 
     render() {
+        //console.log("should be empty");
+        //console.log(this.state.notes.length === 0 && !this.state.searchPhrase)
         let notes = this.renderNotes();
-        console.log(notes);
-        for (note in notes){
-            console.log(note);
-        }
+        //console.log(notes);
         return (
-            <SafeAreaView style={{flex: 1}}>
-                <View style={{flex: 1}}>
+            <View style = {{flex: 1}}>
+                <MyStatusBar backgroundColor="white" barStyle="default" />
+                <SafeAreaView style={{flex: 1}}>
+                    <View style={{flex: 1}}>
 
-                    <View
-                    style={styles.HeaderContainer}>
+                        <View
+                        style={styles.HeaderContainer}>
 
-                        <View style={{flexDirection: 'row', alignItems:'center', justifyContent: 'space-between',flex: 1, marginTop: 20}}>
-                            <View style={{flex: 4, alignItems: 'center', flexDirection:'row', marginRight: 50, marginLeft:-30}}>
-                                <Image source={srmLogo} resizeMode="contain" style={{flex:1}} />
+                            <View style={{flexDirection: 'row', alignItems:'center', justifyContent: 'space-between',flex: 1, marginTop: 20}}>
+                                <View style={{flex: 4, alignItems: 'center', flexDirection:'row', marginRight: 50, marginLeft:-30}}>
+                                    <Image source={srmLogo} resizeMode="contain" style={{flex:1}} />
 
-                                <Image source={routineLogo} resizeMode="contain" style={{flex:1, marginLeft: -35}} />
+                                    <Image source={routineLogo} resizeMode="contain" style={{flex:1, marginLeft: -35}} />
+                                </View>
+                                <TouchableOpacity onPress={this.setModalVisible} style={{flex: 1, alignContent: 'center', justifyContent: 'center'}} >
+                                    <Image source={plus} resizeMode="contain" style={{flex:0.3, width: undefined, height: undefined}}/>
+                                </TouchableOpacity>
+
                             </View>
-                            <TouchableOpacity onPress={this.setModalVisible} style={{flex: 1, alignContent: 'center', justifyContent: 'center'}} >
-                                <Image source={plus} resizeMode="contain" style={{flex:0.3, width: undefined, height: undefined}}/>
-                            </TouchableOpacity>
+
+                            <View style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems:'center',
+                                borderTopColor: 'rgba(55,55,55,0.1)',
+                                borderTopWidth: 1,
+                                borderRadius: 10
+                                }}>
+                                <View style={{flex:1, alignItems: 'center'}}>
+                                    <Image resizeMode='contain' source={searchIcon} style={{flex: 0.5}}/>
+                                </View>
+                                <TextInput style={{
+                                    flex: 4,
+                                    fontSize: GLOBAL.height / 35,
+                                    fontFamily: 'System'
+                                }}
+                                    returnKeyType="search"
+                                    onChangeText={text => {this.setState({searchPhrase: text})}}
+                                    value={this.state.searchPhrase}
+                                    placeholder="Search"/>
+
+                                <TouchableOpacity style={{flex:1, alignItems: 'center'}}
+                                    onPressIn={this.startVoice}
+                                    onPressOut={this.endVoice}>
+                                    <Image resizeMode='contain' source={micIcon} style={{flex: 0.5}}/>
+                                </TouchableOpacity>
+
+                            </View>
 
                         </View>
 
-                        <View style={{
-                            flex: 1,
-                            flexDirection: 'row',
-                            alignItems:'center',
-                            borderTopColor: 'rgba(55,55,55,0.1)',
-                            borderTopWidth: 1,
-                            borderRadius: 10
-                            }}>
-                            <View style={{flex:1, alignItems: 'center'}}>
-                                <Image resizeMode='contain' source={searchIcon} style={{flex: 0.5}}/>
-                            </View>
-                            <TextInput style={{
-                                flex: 4,
-                                fontSize: GLOBAL.height / 35,
-                                fontFamily: 'System'
-                            }}
-                                returnKeyType="search"
-                                onChangeText={text => {this.setState({searchPhrase: text})}}
-                                value={this.state.searchPhrase}
-                                placeholder="Search"/>
+                        <ScrollView
+                            style={{marginTop: 5,
+                                height: this.state.notes.length !== 0 || this.state.searchPhrase ?  4 * (GLOBAL.height / 5) : 0,
+                                width: GLOBAL.width, position:"absolute",
+                                left: 5,
+                                top: (GLOBAL.height/5)}}
+                            contentContainerStyle={{
+                                flexGrow: 1,
+                                justifyContent: 'flex-start'}}>
 
-                            <TouchableOpacity style={{flex:1, alignItems: 'center'}}
-                                onPressIn={this.startVoice}
-                                onPressOut={this.endVoice}>
-                                <Image resizeMode='contain' source={micIcon} style={{flex: 0.5}}/>
-                            </TouchableOpacity>
+                            {notes}
 
+                        </ScrollView>
+
+                        <View style={{marginTop: 40,
+                            height: this.state.notes.length === 0 && !this.state.searchPhrase
+                                ?  4 * (GLOBAL.height / 5) : 0,
+                            width: GLOBAL.width,
+                            position:"absolute",
+                            top: (GLOBAL.height/5)}}>
+                                <TouchableOpacity onPress={this.setModalVisible} style={{flex: 1, alignItems: "center"}}>
+                                <Text style={{
+                                    fontFamily: 'System',
+                                    fontWeight: 'bold',
+                                    fontSize: GLOBAL.height / 40,
+                                    flex: 1
+                                }}>
+                                    Add your first idea, note, task
+                                </Text>
+                                <Text style={{
+                                    fontFamily: 'System',
+                                    fontWeight: 'bold',
+                                    fontSize: GLOBAL.height / 35,
+                                    color: darkBlue,
+                                    flex: 1
+                                }}>
+                                    Everything
+                                </Text>
+                                <Image source={emptImg} style={{
+                                    marginBottom: GLOBAL.height / 4,
+                                    flex: 10
+                                }} resizeMode="contain"/>
+                                </TouchableOpacity>
                         </View>
 
-                    </View>
-
-                    <ScrollView
-                        style={{marginTop: 5, height: 4 * (GLOBAL.height / 5), width: GLOBAL.width, position:"absolute", top: (GLOBAL.height/5)}}
-                        contentContainerStyle={{
-                            flexGrow: 1,
-                            justifyContent: 'flex-start'}}>
-
-                        {notes}
-
-                    </ScrollView>
-
-                    <Modal
+                        <Modal
                             animationType="slide"
                             isVisible={this.state.modalVisible}
-                            backdropOpacity={0.5}
+                            backdropOpacity={0.25}
                         >
-                            <NoteEntry
-                                isPinned={false}
-                                onRef={ref => (this.parentReference = ref)}
-                                saveNewData = {this.createNote.bind(this)}
-                                cancelEdit = {this.setModalInvisible.bind(this)}
-                            />
-                        </Modal>
-                </View>
-            </SafeAreaView>
+                                <NoteEntry
+                                    isPinned={false}
+                                    onRef={ref => (this.parentReference = ref)}
+                                    saveNewData = {this.createNote.bind(this)}
+                                    cancelEdit = {this.setModalInvisible.bind(this)}
+                                />
+                            </Modal>
+                    </View>
+                </SafeAreaView>
+            </View>
         )
     }
 
 }
 
+const STATUSBAR_HEIGHT = Platform.OS === 'ios' ? getStatusBarHeight(true) : StatusBar.currentHeight;
+
 styles = StyleSheet.create({
     HeaderContainer: {
         height: GLOBAL.height / 5,
-        width: GLOBAL.width - 10,
+        width: GLOBAL.width,
         backgroundColor: 'white',
-        marginTop: 5,
+        marginTop: 0,
         borderBottomLeftRadius: 10,
         borderBottomRightRadius: 10,
         shadowColor: "#373737",
 		shadowOffset: { width: 0, height: 10 },
-		shadowOpacity: 0.5,
-		shadowRadius: 10,
-    }
+		shadowOpacity: 0.2,
+		shadowRadius: 4,
+    },
+    statusBar: {
+        height: STATUSBAR_HEIGHT,
+        marginBottom: 0
+    },
 })
 
 NotesContainer.propTypes = {

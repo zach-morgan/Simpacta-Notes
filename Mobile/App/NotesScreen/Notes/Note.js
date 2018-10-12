@@ -23,18 +23,25 @@ export default class Note extends Component {
 
     constructor(props) {
         super(props);
-        this.state = props;
+        this.state = {
+            dateCreated: props.dateCreated,
+            image: props.image,
+            text: props.text,
+            priority: props.priority,
+            isPinned: props.isPinned,
+            modalVisible: false,
+            isEditingPriority: false,
+            position: 0
+        }
     }
 
-    state = {
-        dateCreated: null,
-        image: null,
-        text: null,
-        priority: null,
-        isPinned: false,
-        modalVisible: false,
-        position: 10
-    }
+    onLayout = (e) => {
+        console.log('layout')
+        this.setState({
+          width: e.nativeEvent.layout.width,
+          height: e.nativeEvent.layout.height,
+        })
+      }
 
     setModalVisible = () => {
         this.setState({modalVisible: true});
@@ -45,7 +52,7 @@ export default class Note extends Component {
     }
 
     togglePin = () => {
-        console.log(this.state.isPinned);
+        //console.log(this.state.isPinned);
         let newJSON = {
             s3Key: this.props.s3Key,
             dateCreated: this.state.dateCreated,
@@ -79,10 +86,9 @@ export default class Note extends Component {
             this.setState({position: 0});
     }
 
-    render() {
-        let leftPin = undefined;
+    renderPin = () => {
         if (this.state.isPinned){
-            leftPin = <TouchableOpacity onPress={this.togglePin}
+            return (<TouchableOpacity onPress={this.togglePin}
                 style={{
                     flex: 0.1,
                     backgroundColor: "rgba(47,128,237,0.1)",
@@ -94,11 +100,13 @@ export default class Note extends Component {
                 }}>
                 <Image source={bluePin}
                     style={{flex: 0.25,  resizeMode: "contain", opacity: 0.75}}/>
-            </TouchableOpacity>
+            </TouchableOpacity>)
         }
-        var img;
+    }
+
+    renderImage = () => {
         if (this.state.image) {
-            img = <Image
+            return <Image
                 source={{uri: this.state.image}}
                 style={{ resizeMode:'contain',
                     flex: 1,
@@ -107,8 +115,111 @@ export default class Note extends Component {
                     width:undefined}}
             />
         }
+    }
+
+    updatePriority = (priority) => {
+        this.setState({priority: priority, isEditingPriority: false});
+        noteJSON = {
+            s3Key: this.props.s3Key,
+            dateCreated: this.state.dateCreated,
+            text: this.state.text,
+            image: this.state.image,
+            priority: this.state.priority,
+            isPinned: this.state.isPinned
+        }
+        this.props.update(noteJSON);
+    }
+
+    renderPrioritySelectors = () => {
+        var buttons = [];
+        const parentWidth = this.state.width - 20;
+        const parentHeight = this.state.height - 15;
+        const width = 3 * (parentWidth / 4);
+        const height = parentHeight;
+        const leftPosition = (parentWidth / 4) - 10
+        for (var i = 5; i > 0; i--) {
+            index = i;
+            buttons.push(
+                <TouchableOpacity style={{
+                    flex: 1,
+                    backgroundColor: this.state.priority === i ? darkBlue : 'rgba(0,0,0,0)',
+                    borderRadius: h / 25,
+                    height: height,
+                    justifyContent: 'center'
+                }}
+                 onPress={
+                     this.updatePriority.bind(this, index)}
+                 key={index}>
+                    <Text style={styles.priorityText}>
+                        {index.toString()}
+                    </Text>
+                </TouchableOpacity>
+            )
+        }
+        return (
+            <LinearGradient
+            style={{
+                borderRadius: h / 25,
+                justifyContent: 'space-evenly',
+                position: 'absolute',
+                flexDirection: 'row',
+                left: leftPosition,
+                height: height,
+                width: width,
+                alignItems: 'center'
+            }}
+            start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={[darkBlue, lightBlue]}>
+                {buttons}
+            </LinearGradient>
+        )
+
+    }
+
+    renderPriority = () => {
+        console.log(this.state.priority)
+        if (this.state.isEditingPriority){
+            return this.renderPrioritySelectors();
+        } else if (this.state.priority){
+            return (
+            <TouchableOpacity style={{flex:1}} onPress={() => this.setState({isEditingPriority: true})}>
+                <LinearGradient
+                    style={{borderRadius: h / 25,
+                        flex: 1,
+                        marginRight: -6,
+                        justifyContent:'center',
+                        alignItems: 'center'}}
+                    start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={[darkBlue, lightBlue]}>
+                    <Text style={styles.priorityText}>
+                        {this.state.priority}
+                    </Text>
+                </LinearGradient>
+            </TouchableOpacity>)
+        } else {
+            const plus = require('../../assets/plus.png');
+            return (
+                <TouchableOpacity onPress={() => this.setState({isEditingPriority: true})}
+                style={{
+                    flex: 1,
+                    justifyContent:'center',
+                    alignItems: 'center',
+                }}>
+                    <Image source={plus} resizeMode='contain'
+                    style={{
+                        width: h/ 30,
+                        height: h / 30,
+                        marginRight: -7
+                    }}/>
+                </TouchableOpacity>
+            )
+        }
+    }
+
+    render() {
+        let leftPin = this.renderPin();
+        let img = this.renderImage();
+        let priority = this.renderPriority();
         return(
-            <View>
+            <View onLayout={this.onLayout}>
                 <View style={{flexDirection: "row",
                         width: GLOBAL.width * 1.5,
                         marginTop: 15,
@@ -125,9 +236,10 @@ export default class Note extends Component {
 
                             <Text style={{
                                 flex: this.state.image ? 4 : 5,
-                                marginLeft:20,
-                                marginTop:15,
-                                marginBottom:15,
+                                marginLeft:10,
+                                marginTop:13,
+                                marginBottom:13,
+                                marginRight: 5,
                                 color: 'black',
                                 fontSize: h / 42,
                                 fontFamily: 'System',
@@ -137,18 +249,8 @@ export default class Note extends Component {
 
                             {img}
 
-                            <LinearGradient
-                                style={{
-                                    flex:1,
-                                    backgroundColor: '#007aff',
-                                    justifyContent:'center',
-                                    borderRadius: h / 25,
-                                    marginRight: -3}}
-                                start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={[darkBlue, lightBlue]}>
-                                <Text style={styles.priorityText}>
-                                    {this.state.priority}
-                                </Text>
-                            </LinearGradient>
+                            {priority}
+
                         </View>
                     </TouchableOpacity>
 
@@ -207,7 +309,7 @@ export default class Note extends Component {
                 <Modal
                     animationType="slide"
                     isVisible={this.state.modalVisible}
-                    backdropOpacity={0.5}
+                    backdropOpacity={0.25}
                     >
                     <NoteEntry
                         image={this.state.image}
@@ -277,13 +379,13 @@ let styles = StyleSheet.create({
         marginLeft: 10,
         marginRight: 10,
         backgroundColor:"white",
-        borderRadius: h / 30,
+        borderRadius: h / 40,
         borderWidth: 1,
         borderColor: "#FFF",
         shadowColor: "#373737",
 		shadowOffset: { width: 0, height: 10 },
-		shadowOpacity: 0.25,
-		shadowRadius: 5,
+		shadowOpacity: 0.1,
+		shadowRadius: 3,
     },
     priorityText: {
         textAlign: 'center',

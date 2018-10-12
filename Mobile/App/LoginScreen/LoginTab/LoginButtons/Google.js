@@ -4,7 +4,7 @@ import { Button, Text, Icon } from 'native-base';
 
 export default class GoogleButton extends Component {
   onGoogleButtonClick = () => {
-    console.warn('Google button clicked'); // eslint-disable-line
+    //console.warn('Google button clicked'); // eslint-disable-line
   };
 
   render() {

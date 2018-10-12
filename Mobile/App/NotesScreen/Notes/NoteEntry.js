@@ -75,21 +75,21 @@ export default class NoteEntry extends Component {
         };
 
         ImagePicker.showImagePicker(options, (response) => {
-        console.log('Response = ', response);
+        //console.log('Response = ', response);
 
         if (response.didCancel) {
-            console.log('User cancelled image picker');
+            //console.log('User cancelled image picker');
         }
         else if (response.error) {
-            console.log('ImagePicker Error: ', response.error);
+            //console.log('ImagePicker Error: ', response.error);
         }
         else if (response.customButton) {
-            console.log('User tapped custom button: ', response.customButton);
+            //console.log('User tapped custom button: ', response.customButton);
         }
         else {
             let source = { uri: response.uri };
 
-            console.log(source);
+            //console.log(source);
             this.setState({
                 image: response.uri
             });
@@ -144,15 +144,19 @@ export default class NoteEntry extends Component {
                     flex: 0.75,
                     backgroundColor: 'white',
                     borderRadius: GLOBAL.height / 25,
-                    borderColor: "black",
-                    borderWidth: 1
+                    borderColor: "grey",
+                    borderWidth: 1,
+                    shadowColor: "#373737",
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.85,
+                    shadowRadius: 5,
                 }}>
                     <View style={{flex:0.3, flexDirection: "row", justifyContent:"space-between", marginRight:20, marginLeft:15, marginTop: 20}}>
                         <Button title="Cancel"
                             onPress={() => this.props.cancelEdit()}/>
                         <Button title="Save"
                             onPress={() => {
-                                console.log(this.state);
+                                //console.log(this.state);
                                 let newJSON = {
                                     s3Key: this.props.s3Key || "notes/" + Math.floor(Date.now() / 1000).toString() + ".txt",
                                     dateCreated: Math.floor(Date.now() / 1000),

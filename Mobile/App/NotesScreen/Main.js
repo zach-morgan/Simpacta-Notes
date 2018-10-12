@@ -21,31 +21,32 @@ export default class NotesScreen extends Component {
         let sub = user.attributes.sub;
         Storage.get(sub + ".txt", {download: true})
           .then(userIsEntered => {
-            console.log(userIsEntered.toString() + "user already entered!")
-            console.log(userIsEntered.Body.toString());
+            //console.log(userIsEntered.toString() + "user already entered!")
+            //console.log(userIsEntered.Body.toString());
           })
           .catch(userIsNotEntered => {
-            console.log(userIsNotEntered);
+            //console.log(userIsNotEntered);
             Auth.currentCredentials()
               .then(credentials => {
                 let fedID = credentials.identityId;
                 let userDoc = {id: fedID}
                 Storage.put(sub + ".txt", JSON.stringify(userDoc))
-                  .then(accepted => console.log("succesfully documented user"))
+                  .then(accepted => {} //console.log("succesfully documented user"))
+                  )
                   .catch(notAccepted => {
-                    console.log("error documenting the user");
-                    console.log(notAccepted);
+                    //console.log("error documenting the user");
+                    //console.log(notAccepted);
                   });
               })
               .catch(err => {
-                console.log(err);
-                console.log("error getting user credentials");
+                //console.log(err);
+                //console.log("error getting user credentials");
               })
           });
       })
       .catch(err => {
-        console.log(err);
-        console.log("error getting user info");
+        //console.log(err);
+        //console.log("error getting user info");
         return false;
       })
   }
@@ -64,16 +65,16 @@ export default class NotesScreen extends Component {
                 return key.key !== 'notes/';
             })
             noteKeys.forEach( noteKey => {
-              console.log(noteKey.key);
+              //console.log(noteKey.key);
               let key = noteKey.key;
               notePromises.push(Storage.get(key, {level: 'private', download: true}));
             })
             Promise.all(notePromises)
               .then( data => {
-                console.log("notes " + data);
+                //console.log("notes " + data);
                 let JSONdata = [];
                 data.forEach( note => {
-                  console.log(note);
+                  //console.log(note);
                   let noteJSON = JSON.parse(note.Body.toString());
                   noteJSON.s3Key = keys[data.indexOf(note)].key;
                   JSONdata.push(noteJSON);
@@ -81,16 +82,16 @@ export default class NotesScreen extends Component {
                 this.setState({loading: false, notes: JSONdata});
               })
               .catch( err => {
-                console.log("error getting notes");
-                console.log(err);
+                //console.log("error getting notes");
+                //console.log(err);
               })
           })
           .catch(err => {
-            console.log("error getting notes keys");
-            console.log(err);
+            //console.log("error getting notes keys");
+            //console.log(err);
           })
       })
-      .catch(err => console.log(err));
+      .catch(err =>{}) //console.log(err));
 
 
   }
@@ -105,7 +106,7 @@ export default class NotesScreen extends Component {
 
   render() {
     return (
-      <View style={{alignItems:'center'}}>
+      <View style={{alignItems:'center', flex: 1, justifyContent: 'center'}}>
         {this.displayRightThing()}
       </View>
     );

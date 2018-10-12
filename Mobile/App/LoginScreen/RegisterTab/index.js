@@ -42,14 +42,14 @@ export default class RegisterTab extends Component {
         let email = this.state.inputs[0].state.value;
         let pass = this.state.inputs[1].state.value;
         this.setState({ isRegistering: true });
-        console.log("email " + email + " pass " + pass);
+        // console.log("email " + email + " pass " + pass);
         Auth.signUp({
           username: email,
           password: pass,
           attributes:{email : email}
         })
         .then(user => {
-          console.log(user);
+          //console..log(user);
           GLOBAL.showToast(language.accountCreated);
           this.props.switch(0);
           this.clearAllInputs();
@@ -57,7 +57,8 @@ export default class RegisterTab extends Component {
           alert("Please Verify Your Email Before Continuing.");
         })
         .catch(err => {
-          console.log(err);
+          //console..log(err);
+          alert("There was an error registering you, please try again later.");
         })
       }
     }

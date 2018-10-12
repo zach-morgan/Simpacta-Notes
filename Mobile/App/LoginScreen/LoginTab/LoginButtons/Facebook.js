@@ -4,7 +4,7 @@ import { Button, Text, Icon } from 'native-base';
 
 export default class FacebookButton extends Component {
   onFacebookButtonClick = () => {
-    console.warn('Facebook button clicked'); // eslint-disable-line
+    //console.warn('Facebook button clicked'); // eslint-disable-line
   };
 
   render() {

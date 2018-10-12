@@ -10,6 +10,7 @@ import { Actions } from 'react-native-router-flux';
 import GoogleButton from './LoginButtons/Google';
 import FacebookButton from './LoginButtons/Facebook';
 import { Auth } from 'aws-amplify';
+import Onboarding from 'react-native-onboarding-swiper';
 
 
 export default class LoginTab extends Component {
@@ -19,7 +20,7 @@ export default class LoginTab extends Component {
       inputs: [],
       isLogin: false,
       canLogin: false,
-      isForgot: false
+      isForgot: false,
     };
   }
 
@@ -59,7 +60,7 @@ export default class LoginTab extends Component {
             let pass = this.state.inputs[1].state.value;
             Auth.signIn(email, pass)
               .then( user => {
-                console.log(user)
+                //console.log(user)
                 GLOBAL.showToast(language.loginSuccess);
                 this.moveToMainAppScreen();
                 this.setState({ isLogin: false, canLogin: false });
@@ -77,9 +78,9 @@ export default class LoginTab extends Component {
   };
 
   forgotPass = () => {
-    Auth.forgotPassword("zachmorgan987221@gmail.com")
-      .then(data => console.log(data))
-      .catch(err => console.log(err));
+    // Auth.forgotPassword("zachmorgan987221@gmail.com")
+    //   .then(data => console.log(data))
+    //   .catch(err => console.log(err));
     }
 
   clearAllInputs = () => {
@@ -126,7 +127,7 @@ export default class LoginTab extends Component {
             ref={(ref) => { this.state.inputs[1] = ref; }}
           />
         </Form>
-        <TouchableOpacity onPress={() => console.log("forgot")} activeOpacity={0.5} style={{ marginTop: height / 10, alignItems: 'center' }}>
+        <TouchableOpacity onPress={this.forgotPass} activeOpacity={0.5} style={{ marginTop: height / 10, alignItems: 'center' }}>
           <Text style={GLOBAL.loginScreenStyle.remember}>{language.dontRemember}</Text>
         </TouchableOpacity>
         <View style={{ marginTop: height / 15 }}>
