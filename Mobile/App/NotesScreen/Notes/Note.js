@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
-import { View, Image, TouchableOpacity, Text, StyleSheet} from 'react-native';
+import { View, Image, TouchableOpacity, Text, StyleSheet, Animated, PanResponder} from 'react-native';
 import PropTypes from 'prop-types';
-import {Storage, Auth} from 'aws-amplify';
 import NoteEntry from './NoteEntry.js';
 import Modal from 'react-native-modal';
 import LinearGradient from 'react-native-linear-gradient';
+import Hyperlink from 'react-native-hyperlink'
 
 const editIcon = require("../../assets/edit-icon.png");
 const pinIcon = require("../../assets/pin-icon.png");
@@ -29,19 +29,12 @@ export default class Note extends Component {
             text: props.text,
             priority: props.priority,
             isPinned: props.isPinned,
+            sourceURL: props.sourceURL,
             modalVisible: false,
             isEditingPriority: false,
-            position: 0
+            pan: new Animated.ValueXY()
         }
     }
-
-    onLayout = (e) => {
-        console.log('layout')
-        this.setState({
-          width: e.nativeEvent.layout.width,
-          height: e.nativeEvent.layout.height,
-        })
-      }
 
     setModalVisible = () => {
         this.setState({modalVisible: true});
@@ -59,6 +52,7 @@ export default class Note extends Component {
             text: this.state.text,
             image: this.state.image,
             priority: this.state.priority,
+            sourceURL: this.state.sourceURL,
             isPinned: !this.state.isPinned}
         this.props.update(newJSON);
         this.setState({isPinned: !this.state.isPinned, position: 0});
@@ -78,12 +72,6 @@ export default class Note extends Component {
 
     setPriority = (priority) => {
         this.state.priority = priority;
-    }
-
-    move = () => {
-        this.state.position === 0 ?
-            this.setState({position: -(GLOBAL.width/2) }) :
-            this.setState({position: 0});
     }
 
     renderPin = () => {
@@ -125,25 +113,26 @@ export default class Note extends Component {
             text: this.state.text,
             image: this.state.image,
             priority: this.state.priority,
-            isPinned: this.state.isPinned
+            isPinned: this.state.isPinned,
+            sourceURL: this.state.sourceURL
         }
         this.props.update(noteJSON);
     }
 
     renderPrioritySelectors = () => {
         var buttons = [];
-        const parentWidth = this.state.width - 20;
-        const parentHeight = this.state.height - 15;
-        const width = 3 * (parentWidth / 4);
+        const parentWidth = this.state.width;
+        const parentHeight = this.state.height;
+        const width = 5 * (parentWidth / 6);
         const height = parentHeight;
-        const leftPosition = (parentWidth / 4) - 10
+        const leftPosition = (parentWidth / 6)
         for (var i = 5; i > 0; i--) {
             index = i;
             buttons.push(
                 <TouchableOpacity style={{
                     flex: 1,
                     backgroundColor: this.state.priority === i ? darkBlue : 'rgba(0,0,0,0)',
-                    borderRadius: h / 25,
+                    borderRadius: h / 30,
                     height: height,
                     justifyContent: 'center'
                 }}
@@ -159,14 +148,17 @@ export default class Note extends Component {
         return (
             <LinearGradient
             style={{
-                borderRadius: h / 25,
+                borderRadius: h / 30,
                 justifyContent: 'space-evenly',
                 position: 'absolute',
                 flexDirection: 'row',
                 left: leftPosition,
+                top: -1,
                 height: height,
                 width: width,
-                alignItems: 'center'
+                alignItems: 'center',
+                paddingLeft: width / 15,
+                paddingRight: width / 15,
             }}
             start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={[darkBlue, lightBlue]}>
                 {buttons}
@@ -176,7 +168,6 @@ export default class Note extends Component {
     }
 
     renderPriority = () => {
-        console.log(this.state.priority)
         if (this.state.isEditingPriority){
             return this.renderPrioritySelectors();
         } else if (this.state.priority){
@@ -185,7 +176,7 @@ export default class Note extends Component {
                 <LinearGradient
                     style={{borderRadius: h / 25,
                         flex: 1,
-                        marginRight: -6,
+                        marginRight: -7,
                         justifyContent:'center',
                         alignItems: 'center'}}
                     start={{x: 0, y: 0}} end={{x: 1, y: 0}} colors={[darkBlue, lightBlue]}>
@@ -214,45 +205,116 @@ export default class Note extends Component {
         }
     }
 
+    renderLink = () => {
+        if (this.state.sourceURL){
+            return (<Hyperlink
+                linkDefault={ true }
+                linkStyle={ { color: '#2980b9', fontSize: h / 50 } }
+                linkText={ url => {
+                    this.state.sourceURL = url;
+                    return 'Source' }}>
+                <Text style={ { fontSize: h / 50 } }>
+                    {this.state.sourceURL}
+                </Text>
+            </Hyperlink>)
+        }
+    }
+
+    registerPanResponder = () => {
+        this._val = { x:0, y:0 }
+        this.state.pan.addListener((value) => this._val = value);
+        this.panResponder = PanResponder.create({
+            onStartShouldSetPanResponder: (e, gesture) => true,
+
+            onPanResponderMove: Animated.event([
+            null, { dx: this.state.pan.x, dy: 0 }
+            ]),
+
+            onPanResponderRelease: (e, gesture) => {
+                let xPos = this.state.pan.x._value;
+                if (xPos <= -(GLOBAL.width/4)) {
+                        Animated.spring(this.state.pan, {
+                            toValue: { x: -(GLOBAL.width/2), y: 0 },
+                            friction: 2
+                    }).start(() =>
+                        this.setState({
+                            showDraggable: false
+                        })
+                    );
+                } else {
+                    Animated.spring(this.state.pan, {
+                        toValue: { x: 0, y: 0 },
+                        friction: 5
+                    }).start();
+                }
+            }
+        });
+    }
+
+    componentWillMount() {
+        this.registerPanResponder();
+    }
+
+    onLayout = (e) => {
+        this.setState({
+            width: e.nativeEvent.layout.width,
+            height: e.nativeEvent.layout.height,
+        })
+    }
+
     render() {
         let leftPin = this.renderPin();
         let img = this.renderImage();
         let priority = this.renderPriority();
         return(
-            <View onLayout={this.onLayout}>
-                <View style={{flexDirection: "row",
-                        width: GLOBAL.width * 1.5,
-                        marginTop: 15,
-                        marginLeft: this.state.position,
-                        marginRight: 10}}>
+            <View>
+                <View
+
+                    style={{flexDirection: "row",
+                    width: GLOBAL.width * 1.5,
+                    marginTop: 15,
+                    marginRight: 10,
+                }}>
+                    <Animated.View style={[this.state.pan.getLayout(), {flexDirection: "row",
+                        flex: 1
+                    }]}>
 
                     {leftPin}
 
-                    <TouchableOpacity
-                        onPress={this.move}
-                        style={{ flex: 1}}
+                    <Animated.View
+                        {...this.panResponder.panHandlers}
+                        style={{flex: 1}}
                     >
-                        <View style={styles.noteInfoContainer}>
+                        <View style={styles.noteInfoContainer} onLayout={this.onLayout}>
 
-                            <Text style={{
+                            <View style={{
                                 flex: this.state.image ? 4 : 5,
                                 marginLeft:10,
                                 marginTop:13,
                                 marginBottom:13,
                                 marginRight: 5,
-                                color: 'black',
-                                fontSize: h / 42,
-                                fontFamily: 'System',
-                                alignItems: 'center'}}>
-                                {this.state.text}
-                            </Text>
+                                }}>
+                                <Text stlye={{color: 'black',
+                                    fontSize: h / 42,
+                                    fontFamily: 'System',
+                                    alignItems: 'center',
+                                    flex: 1}}>
+
+                                    {this.state.text}
+
+                                </Text>
+
+                                {this.renderLink()}
+
+                            </View>
 
                             {img}
 
                             {priority}
 
                         </View>
-                    </TouchableOpacity>
+                    </Animated.View>
+
 
                     <View style={{
                         flex:0.5,
@@ -304,8 +366,9 @@ export default class Note extends Component {
                         </View>
 
                     </View>
-
+                    </Animated.View>
                 </View>
+
                 <Modal
                     animationType="slide"
                     isVisible={this.state.modalVisible}
@@ -316,6 +379,7 @@ export default class Note extends Component {
                         text={this.state.text}
                         priority={this.state.priority}
                         s3Key={this.props.s3Key}
+                        sourceURL={this.state.sourceURL}
                         dateCreated={this.state.dateCreated}
                         onRef={ref => (this.parentReference = ref)}
                         saveNewData = {this.saveNoteChange.bind(this)}
@@ -403,6 +467,7 @@ Note.propTypes = {
     image: PropTypes.string,
     text: PropTypes.string,
     priority: PropTypes.number,
+    sourceURL: PropTypes.string,
 
     modalVisible: PropTypes.bool,
     delete: PropTypes.func.isRequired,

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { ScrollView, View, Image, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, StyleSheet, StatusBar, Platform} from 'react-native';
+import { AppState, ScrollView, View, Image, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, StyleSheet, StatusBar, Platform} from 'react-native';
 import Note from './Note.js';
 import PropTypes from 'prop-types';
 import {Storage} from 'aws-amplify';
@@ -30,15 +30,15 @@ export default class NotesContainer extends Component {
 
     constructor(props){
         super(props);
-        this.state = props;
+        this.state = {
+            notes: this.props.notes,
+            searchPhrase: "",
+            modalVisible: false,
+            appState: 'active'
+        }
         Voice.onSpeechResults = this.onSpeechResults.bind(this);
     }
 
-    state = {
-        notes: [],
-        searchPhrase: "",
-        modalVisible: false,
-    }
 
 
     onSpeechResults(results) {
@@ -70,10 +70,44 @@ export default class NotesContainer extends Component {
     setModalInvisible = () => {
         this.setState({modalVisible: false});
     }
-
     componentDidMount() {
-        this.setState({notes: this.props.notes});
+        this.downloadLocal();
+        AppState.addEventListener('change', this._handleAppStateChange);
     }
+
+    componentWillUnmount() {
+        AppState.removeEventListener('change', this._handleAppStateChange);
+    }
+
+    _handleAppStateChange = (nextAppState) => {
+        if (this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
+            this.downloadLocal();
+        }
+        this.setState({appState: nextAppState});
+
+    }
+
+    downloadLocal = async () => {
+        var localSync = require('NativeModules').localNotesSync;
+        localSync.sync('dsfa', (error, localNotes) => {
+          if (error) {
+              //console.log(error);
+          } else if (localNotes){
+            let newNotes = []
+            for (var i = 0; i < localNotes.length; i++){
+                let localNote = JSON.parse(localNotes[i])
+                newNotes.push(localNote);
+                Storage.put(localNote.s3Key, JSON.stringify(localNote), {level: 'private'})
+                    .then(result => {}) //console.log('succesfull updated note in s3'))
+                    .catch(err => {
+                        //console.log( err + " error updating note");
+                    });
+            }
+            let newNotesArray = this.state.notes.concat(newNotes);
+            this.setState({notes: newNotesArray});
+          }
+        })
+      }
 
     removeNote = async (key) => {
         Alert.alert(
@@ -143,7 +177,6 @@ export default class NotesContainer extends Component {
     }
 
     renderNotes = () => {
-
         let pinnedNotes = [];
         let nonPinnedNotes = [];
         this.state.notes.forEach(note => {
@@ -177,6 +210,7 @@ export default class NotesContainer extends Component {
                  text={note.text}
                  image={note.image}
                  priority={note.priority}
+                 sourceURL={note.url}
                  modalVisible={false}
                  onRef={ref => (this.parentReference = ref)}
                  delete={this.removeNote.bind(this)}

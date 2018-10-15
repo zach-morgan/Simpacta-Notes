@@ -20,8 +20,15 @@ GLOBAL.showToast = (message) => {
 };
 
 const App = class App extends Component {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
+    global.localNotes = [];
+    let localNotes = this.props.localNotes;
+    if (localNotes) {
+      for (let i = 0; i < localNotes.length; i++) {
+        global.localNotes.push(JSON.parse(localNotes[i]))
+      }
+    }
     context = this;
     GLOBAL.AppGlobalConfig = AppGlobalConfig;
     AppGlobalConfig.init();

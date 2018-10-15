@@ -4,15 +4,20 @@ import { Actions } from 'react-native-router-flux';
 import Amplify, {API, Auth, Storage} from 'aws-amplify';
 import NotesContainer from './Notes/NotesContainer.js';
 
+
 export default class NotesScreen extends Component {
-  state = {
-    notes: [],
-    loading: true
-  };
+
+  constructor() {
+    super()
+    this.state = {
+      notes: global.localNotes || [],
+      isDownloadingS3: true,
+    };
+  }
 
   componentDidMount() {
       this.documentUser();
-      this.downloadNotes();
+      this.downloadNotesS3();
   }
 
   documentUser = async() => {
@@ -21,11 +26,9 @@ export default class NotesScreen extends Component {
         let sub = user.attributes.sub;
         Storage.get(sub + ".txt", {download: true})
           .then(userIsEntered => {
-            //console.log(userIsEntered.toString() + "user already entered!")
-            //console.log(userIsEntered.Body.toString());
+
           })
           .catch(userIsNotEntered => {
-            //console.log(userIsNotEntered);
             Auth.currentCredentials()
               .then(credentials => {
                 let fedID = credentials.identityId;
@@ -55,7 +58,9 @@ export default class NotesScreen extends Component {
     Actions.pop();
   };
 
-  downloadNotes = async () => {
+
+
+  downloadNotesS3 = async () => {
     Auth.currentCredentials()
       .then(user => {
         Storage.list("notes/", {level : 'private'})
@@ -65,21 +70,20 @@ export default class NotesScreen extends Component {
                 return key.key !== 'notes/';
             })
             noteKeys.forEach( noteKey => {
-              //console.log(noteKey.key);
               let key = noteKey.key;
               notePromises.push(Storage.get(key, {level: 'private', download: true}));
             })
             Promise.all(notePromises)
               .then( data => {
-                //console.log("notes " + data);
                 let JSONdata = [];
                 data.forEach( note => {
-                  //console.log(note);
                   let noteJSON = JSON.parse(note.Body.toString());
                   noteJSON.s3Key = keys[data.indexOf(note)].key;
                   JSONdata.push(noteJSON);
                 })
-                this.setState({loading: false, notes: JSONdata});
+                JSONdata = JSONdata.concat(this.state.notes);
+                
+                this.setState({isDownloadingS3: false, notes: JSONdata});
               })
               .catch( err => {
                 //console.log("error getting notes");
@@ -97,7 +101,7 @@ export default class NotesScreen extends Component {
   }
 
   displayRightThing = () => {
-    if (this.state.loading) {
+    if (this.state.isDownloadingS3) {
       return <ActivityIndicator size="large" color="#0000ff" />
     } else {
       return <NotesContainer notes={this.state.notes} />

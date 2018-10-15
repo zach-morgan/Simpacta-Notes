@@ -15,17 +15,18 @@ export default class NoteEntry extends Component {
 
     constructor(props) {
         super(props);
-        this.state = props;
+        this.state = {
+            s3Key: this.props.s3Key,
+            dateCreated: this.props.dateCreated,
+            image: this.props.image,
+            text: this.props.text,
+            priority: this.props.priority,
+            isPinned: this.props.isPinned,
+            sourceURL: this.props.sourceURL
+        }
     }
 
-    state = {
-        s3Key: null,
-        dateCreated: null,
-        image: null,
-        text: null,
-        priority: null,
-        isPinned: false
-    }
+
 
     renderPriorityButtons = () => {
         let buttons = [];
@@ -163,6 +164,7 @@ export default class NoteEntry extends Component {
                                     text: this.state.text,
                                     image: this.state.image,
                                     priority: this.state.priority,
+                                    sourceURL: this.state.sourceURL,
                                     isPinned: this.state.isPinned}
                                 this.props.saveNewData(newJSON)}
                             }
@@ -201,6 +203,7 @@ NoteEntry.propTypes = {
     priority: PropTypes.number,
     s3Key: PropTypes.string,
     dateCreated: PropTypes.number,
+    sourceURL: PropTypes.string,
     saveNewData: PropTypes.func.isRequired,
     cancelEdit: PropTypes.func.isRequired
 }
