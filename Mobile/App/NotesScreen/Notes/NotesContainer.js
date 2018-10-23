@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { AppState, ScrollView, View, Image, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, StyleSheet, StatusBar, Platform} from 'react-native';
+import { AppState, FlatList, View, Image, Text, TextInput, TouchableOpacity, SafeAreaView, Alert, StyleSheet, StatusBar, Platform} from 'react-native';
 import Note from './Note.js';
 import PropTypes from 'prop-types';
 import {Storage} from 'aws-amplify';
@@ -9,6 +9,7 @@ import Voice from 'react-native-voice';
 import Fuse from 'fuse.js';
 import nextFrame from 'next-frame';
 import { getStatusBarHeight } from 'react-native-iphone-x-helper'
+import { Actions } from 'react-native-router-flux';
 
 const srmLogo = require('../../assets/srmlogo.png');
 const routineLogo = require('../../assets/routine.png');
@@ -34,7 +35,8 @@ export default class NotesContainer extends Component {
             notes: this.props.notes,
             searchPhrase: "",
             modalVisible: false,
-            appState: 'active'
+            appState: 'active',
+            canScroll: true
         }
         Voice.onSpeechResults = this.onSpeechResults.bind(this);
     }
@@ -48,6 +50,7 @@ export default class NotesContainer extends Component {
     }
 
     startVoice = async () => {
+        Actions.push('AudioScreen');
         try {
             await Voice.start('en-US');
         } catch (e) {
@@ -84,7 +87,7 @@ export default class NotesContainer extends Component {
             this.downloadLocal();
         }
         this.setState({appState: nextAppState});
-
+        console.log('state cahnge')
     }
 
     downloadLocal = async () => {
@@ -200,30 +203,59 @@ export default class NotesContainer extends Component {
             })
         }
 
+        if (notesToDisplay.length === 0) {
+            return
+        }
 
-        return notesToDisplay.map(note =>
-            <Note
-                 s3Key={note.s3Key}
-                 key={note.s3Key}
-                 isPinned={note.isPinned}
-                 dateCreated= {note.dateCreated}
-                 text={note.text}
-                 image={note.image}
-                 priority={note.priority}
-                 sourceURL={note.url}
-                 modalVisible={false}
-                 onRef={ref => (this.parentReference = ref)}
-                 delete={this.removeNote.bind(this)}
-                 update={this.updateNote.bind(this)}
-             />
-         );
+        return(
+            <FlatList
+                scrollEnabled={this.state.scrollEnabled}
+                style={{marginTop: 5,
+                    height: this.state.notes.length !== 0 || this.state.searchPhrase ?  (4 * (GLOBAL.height / 5) ) - 30 : 0,
+                    width: GLOBAL.width, position:"absolute",
+                    left: 5,
+                    top: (GLOBAL.height/5)}}
+                contentContainerStyle={{
+                    flexGrow: 1,
+                    justifyContent: 'flex-start'
+                }}
+                data={notesToDisplay.slice(0)}
+                keyExtractor={this._keyExtractor}
+                renderItem={this.renderANote}
+            />
+        );
+    }
+
+    renderANote = ({item, index}) => {
+        return (<Note
+            s3Key={item.s3Key}
+            isPinned={item.isPinned}
+            dateCreated= {item.dateCreated}
+            text={item.text}
+            image={item.image}
+            priority={item.priority}
+            sourceURL={item.url}
+            modalVisible={false}
+            onRef={ref => (this.parentReference = ref)}
+            delete={this.removeNote.bind(this)}
+            update={this.updateNote.bind(this)}
+            toggleScroll={this.toggleScroll}
+        />);
+    };
+
+    _keyExtractor = (item, index) => {
+        return item.s3Key
+    };
+
+    toggleScroll = () => {
+        this.setState({canScroll: !this.state.canScroll})
     }
 
     render() {
         //console.log("should be empty");
         //console.log(this.state.notes.length === 0 && !this.state.searchPhrase)
         let notes = this.renderNotes();
-        //console.log(notes);
+        //return (<Text>TEst</Text>)
         return (
             <View style = {{flex: 1}}>
                 <MyStatusBar backgroundColor="white" barStyle="default" />
@@ -276,19 +308,7 @@ export default class NotesContainer extends Component {
 
                         </View>
 
-                        <ScrollView
-                            style={{marginTop: 5,
-                                height: this.state.notes.length !== 0 || this.state.searchPhrase ?  4 * (GLOBAL.height / 5) : 0,
-                                width: GLOBAL.width, position:"absolute",
-                                left: 5,
-                                top: (GLOBAL.height/5)}}
-                            contentContainerStyle={{
-                                flexGrow: 1,
-                                justifyContent: 'flex-start'}}>
-
-                            {notes}
-
-                        </ScrollView>
+                        {notes}
 
                         <View style={{marginTop: 40,
                             height: this.state.notes.length === 0 && !this.state.searchPhrase

@@ -1,11 +1,13 @@
 import React, { Component } from 'react';
-import { View, StatusBar, Platform, BackHandler, AsyncStorage, Image } from 'react-native';
+import { View, StatusBar, Platform, BackHandler, AsyncStorage, Image, Text } from 'react-native';
 import { Router, Scene, Actions } from 'react-native-router-flux';
 import Toast, { DURATION } from 'react-native-easy-toast';
 import SplashScreen from 'react-native-splash-screen';
 import AppGlobalConfig from './Config/Main';
 import LoginScreen from './LoginScreen/Main';
 import NotesScreen from './NotesScreen/Main';
+import AudioScreen from './AudioScreen/Main';
+import PostRecordSession from './AudioScreen/postSession';
 import Onboard from './Onboarding';
 import Amplify, { Auth } from 'aws-amplify'
 import AWSCONFIG from '../aws-exports.js';
@@ -14,6 +16,10 @@ let context;
 
 const srmLogo= require('./assets/srmlogo.png');
 const routineLogo = require('./assets/routine.png');
+const tabbarIcon = require('./assets/tabbarIcon.png');
+
+const h = GLOBAL.height;
+const w = GLOBAL.width;
 
 GLOBAL.showToast = (message) => {
   context.toast.show(message, DURATION.LENGTH_LONG);
@@ -74,7 +80,7 @@ const App = class App extends Component {
 
   pickCorrectScene = async () => {
       if (await this.isLoggedIn()){
-          this.setState({startingScene: "NotesScreen"})
+          this.setState({startingScene: "MainScreen"})
       } else if (await this.isFirstLaunch()) {
           this.setState({startingScene: "OnboardScreen"})
       } else {
@@ -110,70 +116,49 @@ const App = class App extends Component {
             <Image source={routineLogo} resizeMode="contain" style={{flex: 1}}/>
         </View>
         )
-      } else{
-        var logScreen =
-          <Scene
-              key="LoginScreen"
-              component={LoginScreen}
-              hideNavBar
-            />
-        var noteScreen =
-          <Scene
-            key="NotesScreen"
-            component={NotesScreen}
-            hideNavBar
-          />
-        var onBoardScreen =
-          <Scene
-            key="OnboardScreen"
-            component={Onboard}
-            hideNavBar
-          />
-        //console.log("scene choice: ");
-        //console.log(scene)
-        switch (scene) {
-          case "NotesScreen":
-              //console.log("notes switch")
-              noteScreen =
-                <Scene
-                  key="NotesScreen"
-                  component={NotesScreen}
-                  hideNavBar
-                  initial
-                />
-            break;
-          case "OnboardScreen":
-            //console.log("on switch")
-              onBoardScreen =
-                <Scene
-                  key="OnboardScreen"
-                  component={Onboard}
-                  hideNavBar
-                  initial
-                />
-            break;
-          case "LoginScreen":
-              //console.log("log switch")
-              logScreen =
-                <Scene
-                  key="LoginScreen"
-                  component={LoginScreen}
-                  hideNavBar
-                  initial
-                />
-            break;
-        }
-        //console.log(onBoardScreen);
-        //console.log(noteScreen);
-        //console.log(logScreen)
+      }
+      let mainScreen =
+        <Scene
+          key="MainScreen"
+          hideNavBar
+          initial={this.state.startingScene === "MainScreen"}
+          tabs={true}
+        >
+          <Scene key="TextNotes" title="Add Notes" component={NotesScreen} icon={NotesTabIcon} hideNavBar/>
+          <Scene key="AudioNotes" title="Record Audio" component={AudioScreen} icon={AudioTabIcon} hideNavBar/>
+        </Scene>
+
+      let postRecordingScreen =
+        <Scene
+          key="PostRecord"
+          hideNavBar
+          component={PostRecordSession}
+        />
+
+      let onBoardScreen =
+        <Scene
+          key="OnboardScreen"
+          component={Onboard}
+          hideNavBar
+          initial={this.state.startingScene === "OnboardScreen"}
+        />
+
+      let logScreen =
+        <Scene
+          key="LoginScreen"
+          component={LoginScreen}
+          hideNavBar
+          initial={this.state.startingScene === "LoginScreen"}
+        />
 
         return (
           <View style={{ flex: 1, backgroundColor: appMainColor }}>
             <Router backAndroidHandler={this.onBackPressed} style={{ backgroundColor: appMainColor }}>
               <Scene key="root">
                 {logScreen}
-                {noteScreen}
+                {mainScreen}
                 {onBoardScreen}
+                {postRecordingScreen}
               </Scene>
             </Router>
             <Toast
@@ -186,6 +171,25 @@ const App = class App extends Component {
           </View>
         );
     }
+}
+
+class AudioTabIcon extends Component {
+  render() {
+    return (
+      <View style={{flex: 1, justifyContent:'center', alignItems: 'center'}}>
+        <Image source={tabbarIcon} resizeMode='contain' style={{flex: 1}}/>
+      </View>
+    )
+  }
+}
+
+class NotesTabIcon extends Component {
+  render() {
+    return (
+      <View style={{flex: 1, justifyContent:'center' , alignItems: 'center'}}>
+        <Image source={tabbarIcon} resizeMode='contain' style={{flex: 1}}/>
+      </View>
+    )
   }
 }
 

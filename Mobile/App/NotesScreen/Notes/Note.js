@@ -18,6 +18,11 @@ const iconSize = GLOBAL.height / 20;
 
 const w = GLOBAL.width;
 const h = GLOBAL.height;
+const isLeftOrRightSwipe = ({ moveX, moveY, dx, dy}) => {
+    const draggedLeft = dx < -15;
+    const draggedRight = dx > 15;
+    return (draggedLeft || draggedRight)
+}
 
 export default class Note extends Component {
 
@@ -32,7 +37,8 @@ export default class Note extends Component {
             sourceURL: props.sourceURL,
             modalVisible: false,
             isEditingPriority: false,
-            pan: new Animated.ValueXY()
+            pan: new Animated.ValueXY(),
+            isAtStart: true
         }
     }
 
@@ -55,7 +61,7 @@ export default class Note extends Component {
             sourceURL: this.state.sourceURL,
             isPinned: !this.state.isPinned}
         this.props.update(newJSON);
-        this.setState({isPinned: !this.state.isPinned, position: 0});
+        this.setState({isPinned: !this.state.isPinned, pan: new Animated.ValueXY, isAtStart: true});
     }
 
 
@@ -64,10 +70,16 @@ export default class Note extends Component {
     }
 
     saveNoteChange = (noteJSON) => {
-        this.setModalInvisible();
-        this.move();
-        this.setState(noteJSON);
+        this.setState(noteJSON)
+        this.setState({modalVisible: false,
+            isEditingPriority: false,
+            pan: new Animated.ValueXY(),
+            isAtStart: true});
         this.props.update(noteJSON);
+    }
+
+    moveBackToCenter = () => {
+        this.setState({pan: new Animated.ValueXY})
     }
 
     setPriority = (priority) => {
@@ -220,35 +232,99 @@ export default class Note extends Component {
         }
     }
 
-    registerPanResponder = () => {
-        this._val = { x:0, y:0 }
-        this.state.pan.addListener((value) => this._val = value);
-        this.panResponder = PanResponder.create({
-            onStartShouldSetPanResponder: (e, gesture) => true,
 
-            onPanResponderMove: Animated.event([
-            null, { dx: this.state.pan.x, dy: 0 }
-            ]),
+
+    registerPanResponder = () => {
+        this.state.pan = new Animated.ValueXY();
+        this.panResponder = PanResponder.create({
+
+            onPanResponderGrant: (e, gestureState) => {
+                // Set the initial value to the current state
+                this.state.pan.setOffset({x: this.state.pan.x._value, y: this.state.pan.y._value});
+                this.state.pan.setValue({x: 0, y: 0});
+              },
+            onStartShouldSetPanResponder: (e, gesture) => false,
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                if (isLeftOrRightSwipe(gestureState)){
+                    this.props.toggleScroll();
+                    return true;
+                } else {
+                    return false;
+                }
+
+            },
+            onPanResponderTerminationRequest: (evt, gestureState) => false,
+
+            onPanResponderMove: (evt, gestureState) => {
+                //if (gestureState.dx > 35) {
+                  //this.setScrollViewEnabled(false);
+                    let newX = gestureState.dx;
+                    let xPos = this.state.pan.x._value
+                    let atStart = this.state.isAtStart
+                    if ( (atStart && xPos <= 0) || (!atStart && xPos <= GLOBAL.width * 1.5) ){
+                        this.state.realX = xPos;
+                        this.state.pan.setValue({x: newX, y: 0});
+                    }
+                //}
+            },
 
             onPanResponderRelease: (e, gesture) => {
+                this.state.pan.flattenOffset();
                 let xPos = this.state.pan.x._value;
                 if (xPos <= -(GLOBAL.width/4)) {
+                        this.state.isAtStart = false
+                        this.state.realX  = -(GLOBAL.width / 2);
                         Animated.spring(this.state.pan, {
                             toValue: { x: -(GLOBAL.width/2), y: 0 },
-                            friction: 2
-                    }).start(() =>
-                        this.setState({
-                            showDraggable: false
-                        })
-                    );
+                            friction: 8
+                    }).start(this.props.toggleScroll());
                 } else {
+                    this.state.isAtStart = true
                     Animated.spring(this.state.pan, {
                         toValue: { x: 0, y: 0 },
                         friction: 5
-                    }).start();
+                    }).start(this.props.toggleScroll());
                 }
             }
         });
+    }
+
+    renderNoteBody = () => {
+        let img = this.renderImage();
+        let priority = this.renderPriority();
+        return (<Animated.View
+            {...this.panResponder.panHandlers}
+            style={{flex: 1}}
+        >
+            <View style={styles.noteInfoContainer} onLayout={this.onLayout}>
+
+                <View style={{
+                    flex: this.state.image ? 4 : 5,
+                    marginLeft:10,
+                    marginTop:13,
+                    marginBottom:13,
+                    marginRight: 5,
+                    }}>
+                    <Text stlye={{color: 'black',
+                        fontSize: h / 42,
+                        fontFamily: 'System',
+                        alignItems: 'center',
+                        flex: 1}}>
+
+                        {this.state.text}
+
+                    </Text>
+
+                    {this.renderLink()}
+
+                </View>
+
+                {img}
+
+                {priority}
+
+            </View>
+        </Animated.View>)
     }
 
     componentWillMount() {
@@ -264,8 +340,7 @@ export default class Note extends Component {
 
     render() {
         let leftPin = this.renderPin();
-        let img = this.renderImage();
-        let priority = this.renderPriority();
+        let noteBody = this.renderNoteBody();
         return(
             <View>
                 <View
@@ -281,40 +356,7 @@ export default class Note extends Component {
 
                     {leftPin}
 
-                    <Animated.View
-                        {...this.panResponder.panHandlers}
-                        style={{flex: 1}}
-                    >
-                        <View style={styles.noteInfoContainer} onLayout={this.onLayout}>
-
-                            <View style={{
-                                flex: this.state.image ? 4 : 5,
-                                marginLeft:10,
-                                marginTop:13,
-                                marginBottom:13,
-                                marginRight: 5,
-                                }}>
-                                <Text stlye={{color: 'black',
-                                    fontSize: h / 42,
-                                    fontFamily: 'System',
-                                    alignItems: 'center',
-                                    flex: 1}}>
-
-                                    {this.state.text}
-
-                                </Text>
-
-                                {this.renderLink()}
-
-                            </View>
-
-                            {img}
-
-                            {priority}
-
-                        </View>
-                    </Animated.View>
-
+                    {noteBody}
 
                     <View style={{
                         flex:0.5,
@@ -469,6 +511,7 @@ Note.propTypes = {
     priority: PropTypes.number,
     sourceURL: PropTypes.string,
 
+    toggleScroll: PropTypes.func.isRequired,
     modalVisible: PropTypes.bool,
     delete: PropTypes.func.isRequired,
     update: PropTypes.func.isRequired

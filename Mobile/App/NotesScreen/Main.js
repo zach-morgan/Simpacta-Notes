@@ -3,7 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { Actions } from 'react-native-router-flux';
 import Amplify, {API, Auth, Storage} from 'aws-amplify';
 import NotesContainer from './Notes/NotesContainer.js';
-
+import Orientation from 'react-native-orientation';
 
 export default class NotesScreen extends Component {
 
@@ -16,6 +16,7 @@ export default class NotesScreen extends Component {
   }
 
   componentDidMount() {
+      Orientation.lockToPortrait();
       this.documentUser();
       this.downloadNotesS3();
   }
@@ -82,7 +83,7 @@ export default class NotesScreen extends Component {
                   JSONdata.push(noteJSON);
                 })
                 JSONdata = JSONdata.concat(this.state.notes);
-                
+
                 this.setState({isDownloadingS3: false, notes: JSONdata});
               })
               .catch( err => {
