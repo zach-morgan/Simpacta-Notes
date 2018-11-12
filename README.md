@@ -2,6 +2,8 @@
 
 Repository for SRM Routines iOS/Android/Alexa/Google Assistant/Siri app.
 
+This project was done for an Upwork contract, [my profile](https://www.upwork.com/freelancers/~012b9faa66b2abc1e9).  
+
 Alexa and Google Assistant are built with [Jovo](https://github.com/jovotech/jovo-framework-nodejs).  
 Android and iOS are built with [React Native](https://github.com/facebook/react-native).  
 iOS version has note creation capability with Siri, and share from external applications. Both extensions are written in Swift.  
