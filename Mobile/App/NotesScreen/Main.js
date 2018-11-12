@@ -3,7 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { Actions } from 'react-native-router-flux';
 import Amplify, {API, Auth, Storage} from 'aws-amplify';
 import NotesContainer from './Notes/NotesContainer.js';
-import Orientation from 'react-native-orientation';
+import Orientation from 'react-native-orientation-locker';
 
 export default class NotesScreen extends Component {
 

@@ -14,8 +14,8 @@ import { getStatusBarHeight } from 'react-native-iphone-x-helper'
 
 import { TabView, TabBar, SceneMap } from 'react-native-tab-view';
 
-import RecorderTab from './recordingTab.js';
-import ArchiveTab from './playbackTab.js';
+import RecorderTab from './RecordingTab/Main.js';
+import ArchiveTab from './ArchiveTab/Main.js';
 
 
 const MyStatusBar = ({backgroundColor, ...props}) => (
@@ -30,14 +30,6 @@ const routineLogo = require('../assets/routine.png');
 const darkBlue = "#2F80ED";
 const h = GLOBAL.height;
 const w = GLOBAL.width;
-
-const FirstRoute = () => (
-    <RecorderTab />
-);
-
-const SecondRoute = () => (
-    <ArchiveTab />
-);
 
 renderPager = props => (
     <PagerPan {...props} />
@@ -58,7 +50,7 @@ export default class AudioScreen extends Component {
           case 'recorder':
             return <RecorderTab />;
           case 'archive':
-            return <ArchiveTab />;
+            return <ArchiveTab ref={child => {this.archive = child}}/>;
           default:
             return null;
         }
@@ -96,7 +88,12 @@ export default class AudioScreen extends Component {
 
                     navigationState={this.state}
                     renderScene={this.renderScene}
-                    onIndexChange={index => this.setState({ index })}
+                    onIndexChange={index => {
+                        if (index===1){
+                            this.archive.downloadClips();
+                        }
+                        this.setState({ index })
+                    }}
                     renderPager={this.renderPager}
                     initialLayout={{ width: Dimensions.get('window').width, height: 100 }}
                     renderTabBar={props =>

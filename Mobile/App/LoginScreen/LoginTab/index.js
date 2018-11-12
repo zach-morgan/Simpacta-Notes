@@ -48,7 +48,7 @@ export default class LoginTab extends Component {
   };
 
   moveToMainAppScreen = () => {
-    Actions.push('NotesScreen');
+    Actions.push('MainScreen');
   };
 
   loginUser = () => {

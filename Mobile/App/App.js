@@ -16,7 +16,8 @@ let context;
 
 const srmLogo= require('./assets/srmlogo.png');
 const routineLogo = require('./assets/routine.png');
-const tabbarIcon = require('./assets/tabbarIcon.png');
+const notesTabbarIcon = require('./assets/notesTabBarIcon.png');
+const audioTabbarIcon = require('./assets/audioTabBarIcon.png');
 
 const h = GLOBAL.height;
 const w = GLOBAL.width;
@@ -177,7 +178,7 @@ class AudioTabIcon extends Component {
   render() {
     return (
       <View style={{flex: 1, justifyContent:'center', alignItems: 'center'}}>
-        <Image source={tabbarIcon} resizeMode='contain' style={{flex: 1}}/>
+        <Image source={audioTabbarIcon} resizeMode='contain' style={{flex: 1}}/>
       </View>
     )
   }
@@ -187,7 +188,7 @@ class NotesTabIcon extends Component {
   render() {
     return (
       <View style={{flex: 1, justifyContent:'center' , alignItems: 'center'}}>
-        <Image source={tabbarIcon} resizeMode='contain' style={{flex: 1}}/>
+        <Image source={notesTabbarIcon} resizeMode='contain' style={{flex: 1}}/>
       </View>
     )
   }
