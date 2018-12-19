@@ -27,7 +27,6 @@ export default class NoteEntry extends Component {
     }
 
 
-
     renderPriorityButtons = () => {
         let buttons = [];
         for (var i = 1; i <= 5; i++){
